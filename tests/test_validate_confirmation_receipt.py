@@ -42,11 +42,13 @@ def valid_receipt():
         "meeting_id": "example-2026-10-01-kickoff",
         "request_id": "request-example-001",
         "request_message_id": REPLY_ID,
-        "issued_at": "2026-10-01T12:00:00Z",
+        "request_issued_at": "2026-10-01T11:55:00Z",
+        "issued_at": "2026-10-01T12:10:00Z",
         "discord": {
             "channel_id": DISCORD_ID,
             "author_id": DISCORD_ID,
             "message_id": MESSAGE_ID,
+            "created_at": "2026-10-01T12:00:00Z",
             "reply_to_message_id": REPLY_ID,
             "phrase": "confirmed",
         },
@@ -69,7 +71,7 @@ def valid_receipt():
             "approved": True,
             "approved_by_id": NOTION_ID,
             "approved_at": "2026-10-01T12:05:00Z",
-            "approved_scope": "meeting summary only",
+            "approved_scope": "meeting-summary+clean-transcript",
         },
     }
 
@@ -103,6 +105,35 @@ class ConfirmationReceiptTests(unittest.TestCase):
         receipt["issued_at"] = "2026-10-01T10:00:00Z"
         self.assertTrue(any("expired" in error for error in self.validate(receipt)))
 
+    def test_old_discord_confirmation_predating_request_fails(self):
+        receipt = valid_receipt()
+        receipt["discord"]["created_at"] = "2026-10-01T11:50:00Z"
+        self.assertTrue(
+            any("discord.created_at predates" in error for error in self.validate(receipt))
+        )
+
+    def test_old_notion_confirmation_predating_request_fails(self):
+        receipt = valid_receipt()
+        receipt["notion"]["meeting_confirmed_at"] = "2026-10-01T11:50:00Z"
+        receipt["notion"]["tasks"][0]["confirmed_at"] = "2026-10-01T11:50:00Z"
+        errors = self.validate(receipt)
+        self.assertTrue(any("notion.meeting_confirmed_at predates" in e for e in errors))
+        self.assertTrue(any("notion.tasks[0].confirmed_at predates" in e for e in errors))
+
+    def test_confirmation_after_receipt_fails(self):
+        receipt = valid_receipt()
+        receipt["discord"]["created_at"] = "2026-10-01T12:11:00Z"
+        self.assertTrue(
+            any("later than receipt" in error for error in self.validate(receipt))
+        )
+
+    def test_request_window_exceeding_max_age_fails(self):
+        receipt = valid_receipt()
+        receipt["request_issued_at"] = "2026-10-01T10:00:00Z"
+        self.assertTrue(
+            any("validity window" in error for error in self.validate(receipt))
+        )
+
     def test_unconfirmed_task_fails(self):
         receipt = valid_receipt()
         receipt["notion"]["tasks"][0]["confirmed"] = False
@@ -118,6 +149,13 @@ class ConfirmationReceiptTests(unittest.TestCase):
         receipt["rag"]["approved"] = False
         self.assertTrue(
             any("RAG approval" in error for error in self.validate(receipt, require_rag=True))
+        )
+
+    def test_rag_scope_must_use_controlled_value(self):
+        receipt = valid_receipt()
+        receipt["rag"]["approved_scope"] = "all meeting data"
+        self.assertTrue(
+            any("approved_scope" in error for error in self.validate(receipt, require_rag=True))
         )
 
 

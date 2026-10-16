@@ -48,10 +48,11 @@ The Agent sends a meeting-bound request containing a unique request ID and expir
 - the Discord reply comes from an authorized numeric user ID;
 - the reply is in the configured channel and directly references the request message;
 - the exact phrase arrives before the configured maximum age;
+- the request, Discord reply, Notion confirmations, RAG approval, and receipt timestamps follow that order and stay inside the configured validity window;
 - the Notion meeting record and every task intended for dispatch are confirmed by authorized Notion user IDs;
 - every task still has `Dispatched = false`.
 
-The Agent writes those readbacks into the confirmation receipt and runs `validate_confirmation_receipt.py` with the expected meeting and request IDs. Discord alone is insufficient. Notion alone does not trigger the next phase. A locally edited receipt is not authorization and must not replace provider readback.
+The Agent writes the request timestamp and those readbacks, including each provider event timestamp, into the confirmation receipt and runs `validate_confirmation_receipt.py` with the expected meeting and request IDs. Discord alone is insufficient. Notion alone does not trigger the next phase. A locally edited receipt is not authorization and must not replace provider readback.
 
 ## Hub pages
 

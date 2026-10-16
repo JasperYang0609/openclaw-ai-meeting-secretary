@@ -106,7 +106,7 @@ Proceed only when:
 2. fresh Notion API readback shows the meeting record and every task intended for dispatch as confirmed by authorized Notion user IDs; and
 3. the provider readbacks are written to one meeting-bound receipt and pass `validate_confirmation_receipt.py` with the expected meeting and request IDs.
 
-The receipt validator checks consistency and freshness but does not authenticate provider data. Build the receipt only from live readback in the same run. If any check is missing, stop and remind the user. Unconfirmed records must not be dispatched or indexed.
+The receipt validator checks identity, the `request → confirmation → receipt` timeline, and freshness, but does not authenticate provider data. Build the receipt only from live readback in the same run. If any check is missing, stop and remind the user. Unconfirmed records must not be dispatched or indexed.
 
 ### 6. Publish confirmed knowledge when approved
 
@@ -114,7 +114,7 @@ When RAG is enabled and approved:
 
 1. Create or update the stable `summary.md` for the meeting.
 2. Include a cleaned transcript only when the customer explicitly approved that source scope.
-3. Validate the Markdown with `validate_meeting_record.py`, requiring the expected customer, index project, and confirmation receipt.
+3. Validate the Markdown with `validate_meeting_record.py`, requiring the expected customer, source, index project, access route, enabled Gemini configuration, allowed source scope, and confirmation receipt.
 4. Run the existing Gemini RAG incremental index.
 5. Read back provider, model, source, and changed-file evidence.
 6. Run the coverage audit and one source-grounded natural-language recall test.

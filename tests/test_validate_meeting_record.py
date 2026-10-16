@@ -63,6 +63,7 @@ rag_approved_by_id: {NOTION_ID}
 rag_approved_at: 2026-10-01T12:05:00Z
 rag_approval_receipt_id: receipt-example-001
 access_scope: isolated-route:example-meetings
+source_id: meeting-records
 index_project: ExampleMeetings
 ---
 
@@ -83,6 +84,16 @@ def valid_config():
             "confirmation_max_age_minutes": 60,
         },
         "notion_confirmation": {"authorized_confirmer_ids": [NOTION_ID]},
+        "rag": {
+            "enabled": True,
+            "provider": "google-gemini",
+            "model": "gemini-embedding-001",
+            "customer_id": "example",
+            "source_id": "meeting-records",
+            "index_project": "ExampleMeetings",
+            "access_mode": "isolated-route:example-meetings",
+            "include_clean_transcript": True,
+        },
     }
 
 
@@ -93,11 +104,13 @@ def valid_receipt():
         "meeting_id": "example-2026-10-01-kickoff",
         "request_id": "request-example-001",
         "request_message_id": REQUEST_MESSAGE_ID,
-        "issued_at": "2026-10-01T12:00:00Z",
+        "request_issued_at": "2026-10-01T11:55:00Z",
+        "issued_at": "2026-10-01T12:10:00Z",
         "discord": {
             "channel_id": DISCORD_ID,
             "author_id": DISCORD_ID,
             "message_id": MESSAGE_ID,
+            "created_at": "2026-10-01T12:00:00Z",
             "reply_to_message_id": REQUEST_MESSAGE_ID,
             "phrase": "confirmed",
         },
@@ -120,7 +133,7 @@ def valid_receipt():
             "approved": True,
             "approved_by_id": NOTION_ID,
             "approved_at": "2026-10-01T12:05:00Z",
-            "approved_scope": "meeting summary only",
+            "approved_scope": "meeting-summary+clean-transcript",
         },
     }
 
@@ -132,6 +145,7 @@ class MeetingRecordValidationTests(unittest.TestCase):
         expected_customer="example",
         expected_project="ExampleMeetings",
         receipt=None,
+        config=None,
     ):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -140,7 +154,7 @@ class MeetingRecordValidationTests(unittest.TestCase):
         config_path = root / "onboarding.json"
         receipt_path = root / "receipt.json"
         record_path.write_text(text, encoding="utf-8")
-        config_path.write_text(json.dumps(valid_config()), encoding="utf-8")
+        config_path.write_text(json.dumps(config or valid_config()), encoding="utf-8")
         receipt_path.write_text(json.dumps(receipt or valid_receipt()), encoding="utf-8")
         return MODULE.validate(
             record_path,
@@ -211,6 +225,52 @@ class MeetingRecordValidationTests(unittest.TestCase):
         receipt["rag"]["approved"] = False
         errors = self.validate_record(valid_record(), receipt=receipt)
         self.assertTrue(any("RAG approval" in error for error in errors))
+
+    def test_disabled_onboarding_rag_fails(self):
+        config = valid_config()
+        config["rag"]["enabled"] = False
+        errors = self.validate_record(valid_record(), config=config)
+        self.assertTrue(any("explicitly enabled" in error for error in errors))
+
+    def test_onboarding_rag_identity_mismatch_fails(self):
+        config = valid_config()
+        config["rag"]["customer_id"] = "another-customer"
+        config["rag"]["index_project"] = "AnotherProject"
+        errors = self.validate_record(valid_record(), config=config)
+        self.assertTrue(any("RAG customer_id" in error for error in errors))
+        self.assertTrue(any("RAG index_project" in error for error in errors))
+
+    def test_onboarding_rag_route_and_source_mismatch_fail(self):
+        config = valid_config()
+        config["rag"]["source_id"] = "another-source"
+        config["rag"]["access_mode"] = "organization-wide"
+        errors = self.validate_record(valid_record(), config=config)
+        self.assertTrue(any("source_id" in error for error in errors))
+        self.assertTrue(any("access_scope" in error for error in errors))
+
+    def test_clean_transcript_requires_onboarding_scope(self):
+        config = valid_config()
+        config["rag"]["include_clean_transcript"] = False
+        errors = self.validate_record(
+            valid_record("meeting_transcript_clean"), config=config
+        )
+        self.assertTrue(any("does not approve cleaned transcripts" in e for e in errors))
+
+    def test_clean_transcript_requires_receipt_scope(self):
+        receipt = valid_receipt()
+        receipt["rag"]["approved_scope"] = "meeting-summary"
+        errors = self.validate_record(
+            valid_record("meeting_transcript_clean"), receipt=receipt
+        )
+        self.assertTrue(any("receipt RAG scope" in error for error in errors))
+
+    def test_wrong_embedding_provider_or_model_fails(self):
+        config = valid_config()
+        config["rag"]["provider"] = "another-provider"
+        config["rag"]["model"] = "another-model"
+        errors = self.validate_record(valid_record(), config=config)
+        self.assertTrue(any("provider" in error for error in errors))
+        self.assertTrue(any("model" in error for error in errors))
 
 
 if __name__ == "__main__":

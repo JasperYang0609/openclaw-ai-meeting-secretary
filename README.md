@@ -89,7 +89,7 @@ python3 ai-meeting-secretary/scripts/validate_confirmation_receipt.py \
   --expected-request-id request-unique-value
 ```
 
-The receipt must be built from fresh Discord and Notion API readback in the same run. The validator does not fetch or authenticate provider data itself and must not be treated as an authorization system.
+The receipt must be built from fresh Discord and Notion API readback in the same run. It records the request time plus each confirmation event time, and the validator requires `request → confirmation → receipt` ordering within the configured validity window. The validator does not fetch or authenticate provider data itself and must not be treated as an authorization system.
 
 ## Verify a confirmed meeting record
 
@@ -103,7 +103,7 @@ python3 ai-meeting-secretary/scripts/validate_meeting_record.py \
   --expected-request-id request-unique-value
 ```
 
-Passing this validator does not index anything. It only checks that the document and receipt identities are eligible for the configured Gemini RAG gate.
+Passing this validator does not index anything. It only checks that the document and receipt identities match the enabled onboarding RAG configuration, including provider, model, customer, source, index project, access route, and approved source scope.
 
 ## Test
 

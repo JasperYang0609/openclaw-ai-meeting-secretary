@@ -54,7 +54,7 @@ Notion is a collaboration mirror; confirmed local Markdown is the RAG source of 
 
 1. Meeting record and tasks are human-confirmed.
 2. Confirmed Markdown exists under the approved root.
-3. `validate_meeting_record.py` passes with required customer identity, index identity, and a fresh meeting-bound confirmation receipt.
+3. `validate_meeting_record.py` passes with a fresh meeting-bound confirmation receipt and an enabled onboarding RAG configuration whose provider, model, customer, source, index project, access route, and transcript scope match the document.
 4. Existing RAG incremental indexing runs.
 5. Receipt readback confirms `google-gemini`, `gemini-embedding-001`, and the expected changed file.
 6. Coverage audit passes.

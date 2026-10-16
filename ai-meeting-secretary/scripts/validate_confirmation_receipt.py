@@ -18,6 +18,10 @@ from typing import Any
 
 SNOWFLAKE = re.compile(r"^\d{17,20}$")
 PLACEHOLDER = re.compile(r"^(?:REPLACE_WITH_|YYYY-MM-DD)")
+RAG_APPROVED_SCOPES = {
+    "meeting-summary",
+    "meeting-summary+clean-transcript",
+}
 
 
 def parse_time(value: Any, field: str, errors: list[str]) -> dt.datetime | None:
@@ -40,6 +44,21 @@ def load_json(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError("top-level JSON must be an object")
     return data
+
+
+def validate_event_time(
+    value: Any,
+    field: str,
+    request_issued_at: dt.datetime | None,
+    receipt_issued_at: dt.datetime | None,
+    errors: list[str],
+) -> dt.datetime | None:
+    parsed = parse_time(value, field, errors)
+    if parsed and request_issued_at and parsed < request_issued_at:
+        errors.append(f"{field} predates the confirmation request")
+    if parsed and receipt_issued_at and parsed > receipt_issued_at:
+        errors.append(f"{field} is later than receipt issued_at")
+    return parsed
 
 
 def validate(
@@ -67,6 +86,9 @@ def validate(
     if not isinstance(request_message_id, str) or not SNOWFLAKE.fullmatch(request_message_id):
         errors.append("request_message_id must be a numeric Discord message ID")
 
+    request_issued_at = parse_time(
+        receipt.get("request_issued_at"), "request_issued_at", errors
+    )
     issued_at = parse_time(receipt.get("issued_at"), "issued_at", errors)
     discord_config = config.get("discord", {})
     max_age = discord_config.get("confirmation_max_age_minutes")
@@ -78,6 +100,12 @@ def validate(
             errors.append("receipt issued_at is in the future")
         if age > dt.timedelta(minutes=max_age):
             errors.append("confirmation receipt is expired")
+        if request_issued_at:
+            request_window = issued_at - request_issued_at
+            if request_window.total_seconds() < 0:
+                errors.append("request_issued_at is later than receipt issued_at")
+            elif request_window > dt.timedelta(minutes=max_age):
+                errors.append("confirmation request exceeded the configured validity window")
 
     discord = receipt.get("discord")
     if not isinstance(discord, dict):
@@ -96,6 +124,13 @@ def validate(
             discord.get("message_id", "")
         ):
             errors.append("Discord confirmation message_id is invalid")
+        validate_event_time(
+            discord.get("created_at"),
+            "discord.created_at",
+            request_issued_at,
+            issued_at,
+            errors,
+        )
 
     notion_config = config.get("notion_confirmation", {})
     notion_authorized = notion_config.get("authorized_confirmer_ids", [])
@@ -107,7 +142,13 @@ def validate(
             errors.append("meeting record is not confirmed in Notion")
         if notion.get("meeting_confirmed_by_id") not in notion_authorized:
             errors.append("Notion meeting confirmer is not authorized")
-        parse_time(notion.get("meeting_confirmed_at"), "notion.meeting_confirmed_at", errors)
+        validate_event_time(
+            notion.get("meeting_confirmed_at"),
+            "notion.meeting_confirmed_at",
+            request_issued_at,
+            issued_at,
+            errors,
+        )
         if not isinstance(notion.get("meeting_page_id"), str) or not notion.get(
             "meeting_page_id", ""
         ).strip():
@@ -133,7 +174,13 @@ def validate(
                     errors.append(f"{prefix} is not confirmed")
                 if task.get("confirmed_by_id") not in notion_authorized:
                     errors.append(f"{prefix} confirmer is not authorized")
-                parse_time(task.get("confirmed_at"), f"{prefix}.confirmed_at", errors)
+                validate_event_time(
+                    task.get("confirmed_at"),
+                    f"{prefix}.confirmed_at",
+                    request_issued_at,
+                    issued_at,
+                    errors,
+                )
                 if task.get("dispatched") is not False:
                     errors.append(f"{prefix} was already dispatched")
 
@@ -144,11 +191,18 @@ def validate(
         else:
             if rag.get("approved_by_id") not in notion_authorized:
                 errors.append("RAG approver is not authorized")
-            parse_time(rag.get("approved_at"), "rag.approved_at", errors)
-            if not isinstance(rag.get("approved_scope"), str) or not rag.get(
-                "approved_scope", ""
-            ).strip():
-                errors.append("rag.approved_scope must be explicit")
+            validate_event_time(
+                rag.get("approved_at"),
+                "rag.approved_at",
+                request_issued_at,
+                issued_at,
+                errors,
+            )
+            if rag.get("approved_scope") not in RAG_APPROVED_SCOPES:
+                errors.append(
+                    "rag.approved_scope must be meeting-summary or "
+                    "meeting-summary+clean-transcript"
+                )
 
     return errors
 

@@ -4,11 +4,13 @@
   "meeting_id": "REPLACE_WITH_STABLE_MEETING_ID",
   "request_id": "REPLACE_WITH_CONFIRMATION_REQUEST_ID",
   "request_message_id": "REPLACE_WITH_CONFIRMATION_REQUEST_MESSAGE_ID",
+  "request_issued_at": "YYYY-MM-DDTHH:MM:SSZ",
   "issued_at": "YYYY-MM-DDTHH:MM:SSZ",
   "discord": {
     "channel_id": "REPLACE_WITH_DISCORD_CHANNEL_ID",
     "author_id": "REPLACE_WITH_DISCORD_USER_ID",
     "message_id": "REPLACE_WITH_DISCORD_MESSAGE_ID",
+    "created_at": "YYYY-MM-DDTHH:MM:SSZ",
     "reply_to_message_id": "REPLACE_WITH_CONFIRMATION_REQUEST_MESSAGE_ID",
     "phrase": "confirmed"
   },
@@ -31,6 +33,6 @@
     "approved": false,
     "approved_by_id": "",
     "approved_at": "",
-    "approved_scope": ""
+    "approved_scope": "meeting-summary"
   }
 }

@@ -30,6 +30,7 @@ REQUIRED_FIELDS = {
     "rag_approved_at",
     "rag_approval_receipt_id",
     "access_scope",
+    "source_id",
     "index_project",
 }
 SUMMARY_HEADINGS = {
@@ -172,6 +173,7 @@ def validate(
             errors.append(f"{field} must be a timezone-aware ISO-8601 timestamp")
 
     receipt = None
+    config = None
     if not confirmation_receipt_path or not onboarding_config_path or not expected_request_id:
         errors.append(
             "confirmation receipt, onboarding config, and expected_request_id are required"
@@ -194,6 +196,34 @@ def validate(
                     require_rag_approval=True,
                 )
             )
+    if config is not None:
+        rag_config = config.get("rag")
+        if not isinstance(rag_config, dict):
+            errors.append("onboarding config must contain a RAG configuration")
+        else:
+            if rag_config.get("enabled") is not True:
+                errors.append("onboarding RAG must be explicitly enabled")
+            if rag_config.get("provider") != "google-gemini":
+                errors.append("onboarding RAG provider must be google-gemini")
+            if rag_config.get("model") != "gemini-embedding-001":
+                errors.append("onboarding RAG model must be gemini-embedding-001")
+            if rag_config.get("customer_id") != expected_customer_id:
+                errors.append("onboarding RAG customer_id does not match the expected customer")
+            if rag_config.get("index_project") != expected_index_project:
+                errors.append("onboarding RAG index_project does not match the expected project")
+            if rag_config.get("customer_id") != fields.get("customer_id"):
+                errors.append("document customer_id does not match onboarding RAG identity")
+            if rag_config.get("index_project") != fields.get("index_project"):
+                errors.append("document index_project does not match onboarding RAG identity")
+            if rag_config.get("source_id") != fields.get("source_id"):
+                errors.append("document source_id does not match onboarding RAG source")
+            if rag_config.get("access_mode") != fields.get("access_scope"):
+                errors.append("document access_scope does not match onboarding RAG route")
+            if (
+                fields.get("document_type") == "meeting_transcript_clean"
+                and rag_config.get("include_clean_transcript") is not True
+            ):
+                errors.append("onboarding RAG does not approve cleaned transcripts")
     if receipt:
         notion = receipt.get("notion", {})
         rag = receipt.get("rag", {})
@@ -210,6 +240,17 @@ def validate(
             errors.append("rag_approved_by_id does not match the receipt")
         if fields.get("rag_approved_at") != rag.get("approved_at"):
             errors.append("rag_approved_at does not match the receipt")
+        approved_scope = rag.get("approved_scope")
+        if (
+            fields.get("document_type") == "meeting_transcript_clean"
+            and approved_scope != "meeting-summary+clean-transcript"
+        ):
+            errors.append("receipt RAG scope does not approve cleaned transcripts")
+        if fields.get("document_type") == "meeting_summary" and approved_scope not in {
+            "meeting-summary",
+            "meeting-summary+clean-transcript",
+        }:
+            errors.append("receipt RAG scope does not approve meeting summaries")
 
     found_headings = headings(body)
     required_headings = (

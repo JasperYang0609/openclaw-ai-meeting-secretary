@@ -1,0 +1,52 @@
+{
+  "schema": "ai_meeting_secretary.onboarding.v1",
+  "organization": {
+    "name": "REPLACE_WITH_ORGANIZATION_NAME",
+    "departments": [
+      "REPLACE_WITH_DEPARTMENT_NAME"
+    ]
+  },
+  "notion": {
+    "transcripts_database_id": "REPLACE_WITH_NOTION_DATABASE_ID",
+    "meeting_records_database_id": "REPLACE_WITH_NOTION_DATABASE_ID",
+    "task_master_database_id": "REPLACE_WITH_NOTION_DATABASE_ID",
+    "department_database_ids": {
+      "REPLACE_WITH_DEPARTMENT_NAME": "REPLACE_WITH_NOTION_DATABASE_ID"
+    },
+    "meeting_template_page_id": "REPLACE_WITH_NOTION_PAGE_ID",
+    "ai_section_marker": "PIN: AI-WRITABLE SECTION"
+  },
+  "discord": {
+    "notification_channel_id": "REPLACE_WITH_DISCORD_CHANNEL_ID",
+    "confirmation_phrase": "confirmed",
+    "authorized_confirmer_ids": [
+      "REPLACE_WITH_DISCORD_USER_ID"
+    ],
+    "confirmation_max_age_minutes": 1440
+  },
+  "notion_confirmation": {
+    "authorized_confirmer_ids": [
+      "REPLACE_WITH_NOTION_USER_ID"
+    ]
+  },
+  "task_dispatch": {
+    "mode": "manual"
+  },
+  "local_records": {
+    "canonical_root": "REPLACE_WITH_ABSOLUTE_LOCAL_PATH"
+  },
+  "rag": {
+    "enabled": false,
+    "provider": "google-gemini",
+    "model": "gemini-embedding-001",
+    "plugin_project_root": "REPLACE_WITH_ABSOLUTE_LOCAL_PATH",
+    "canonical_root": "REPLACE_WITH_ABSOLUTE_LOCAL_PATH",
+    "source_id": "meeting-records",
+    "index_project": "REPLACE_WITH_INDEX_PROJECT",
+    "customer_id": "REPLACE_WITH_STABLE_CUSTOMER_ID",
+    "access_mode": "organization-wide",
+    "include_clean_transcript": false,
+    "approval_by": "REPLACE_WITH_APPROVER_NAME",
+    "approval_at": "YYYY-MM-DD"
+  }
+}

@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**", "fix/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Compile Python
+        run: >-
+          python3 -m py_compile
+          ai-meeting-secretary/scripts/validate_confirmation_receipt.py
+          ai-meeting-secretary/scripts/validate_local_transcript.py
+          ai-meeting-secretary/scripts/validate_meeting_record.py
+          ai-meeting-secretary/scripts/validate_onboarding_config.py
+          scripts/build_skill_archive.py
+          scripts/check_public_release.py
+      - name: Run tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Scan public package
+        run: python3 scripts/check_public_release.py
+      - name: Verify deterministic package
+        run: python3 scripts/build_skill_archive.py --check

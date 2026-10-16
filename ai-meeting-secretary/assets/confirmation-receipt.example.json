@@ -1,0 +1,38 @@
+{
+  "schema": "ai_meeting_secretary.confirmation_receipt.v1",
+  "receipt_id": "REPLACE_WITH_UNIQUE_RECEIPT_ID",
+  "meeting_id": "REPLACE_WITH_STABLE_MEETING_ID",
+  "request_id": "REPLACE_WITH_CONFIRMATION_REQUEST_ID",
+  "request_message_id": "REPLACE_WITH_CONFIRMATION_REQUEST_MESSAGE_ID",
+  "request_issued_at": "YYYY-MM-DDTHH:MM:SSZ",
+  "issued_at": "YYYY-MM-DDTHH:MM:SSZ",
+  "discord": {
+    "channel_id": "REPLACE_WITH_DISCORD_CHANNEL_ID",
+    "author_id": "REPLACE_WITH_DISCORD_USER_ID",
+    "message_id": "REPLACE_WITH_DISCORD_MESSAGE_ID",
+    "created_at": "YYYY-MM-DDTHH:MM:SSZ",
+    "reply_to_message_id": "REPLACE_WITH_CONFIRMATION_REQUEST_MESSAGE_ID",
+    "phrase": "confirmed"
+  },
+  "notion": {
+    "meeting_page_id": "REPLACE_WITH_NOTION_PAGE_ID",
+    "meeting_confirmed": true,
+    "meeting_confirmed_by_id": "REPLACE_WITH_NOTION_USER_ID",
+    "meeting_confirmed_at": "YYYY-MM-DDTHH:MM:SSZ",
+    "tasks": [
+      {
+        "task_id": "REPLACE_WITH_NOTION_TASK_PAGE_ID",
+        "confirmed": true,
+        "confirmed_by_id": "REPLACE_WITH_NOTION_USER_ID",
+        "confirmed_at": "YYYY-MM-DDTHH:MM:SSZ",
+        "dispatched": false
+      }
+    ]
+  },
+  "rag": {
+    "approved": false,
+    "approved_by_id": "",
+    "approved_at": "",
+    "approved_scope": "meeting-summary"
+  }
+}

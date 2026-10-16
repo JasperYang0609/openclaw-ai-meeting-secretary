@@ -43,13 +43,34 @@ class LocalTranscriptTests(unittest.TestCase):
                 self.write(),
                 expected_first_marker="00:00",
                 expected_last_marker="12:33",
+                completion_gate=True,
             ),
             [],
         )
 
     def test_missing_last_marker_fails(self):
-        errors = MODULE.validate(self.write(), expected_last_marker="20:00")
+        errors = MODULE.validate(
+            self.write(),
+            expected_first_marker="00:00",
+            expected_last_marker="20:00",
+            completion_gate=True,
+        )
         self.assertTrue(any("last marker" in error for error in errors))
+
+    def test_completion_gate_requires_both_markers(self):
+        errors = MODULE.validate(
+            self.write(), expected_first_marker="00:00", completion_gate=True
+        )
+        self.assertTrue(any("requires both" in error for error in errors))
+
+    def test_reversed_markers_fail(self):
+        errors = MODULE.validate(
+            self.write(),
+            expected_first_marker="12:33",
+            expected_last_marker="00:00",
+            completion_gate=True,
+        )
+        self.assertTrue(any("before" in error for error in errors))
 
     def test_short_transcript_fails(self):
         errors = MODULE.validate(self.write("# Transcript\n\nshort"))
@@ -62,4 +83,3 @@ class LocalTranscriptTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -18,7 +18,16 @@
   },
   "discord": {
     "notification_channel_id": "REPLACE_WITH_DISCORD_CHANNEL_ID",
-    "confirmation_phrase": "confirmed"
+    "confirmation_phrase": "confirmed",
+    "authorized_confirmer_ids": [
+      "REPLACE_WITH_DISCORD_USER_ID"
+    ],
+    "confirmation_max_age_minutes": 1440
+  },
+  "notion_confirmation": {
+    "authorized_confirmer_ids": [
+      "REPLACE_WITH_NOTION_USER_ID"
+    ]
   },
   "task_dispatch": {
     "mode": "manual"
@@ -41,4 +50,3 @@
     "approval_at": "YYYY-MM-DD"
   }
 }
-

@@ -36,6 +36,11 @@ def valid_config(rag_enabled=True):
         "discord": {
             "notification_channel_id": "1234567890" + "1234567",
             "confirmation_phrase": "confirmed",
+            "authorized_confirmer_ids": ["1234567890" + "1234567"],
+            "confirmation_max_age_minutes": 1440,
+        },
+        "notion_confirmation": {
+            "authorized_confirmer_ids": ["notion-user-example-001"]
         },
         "task_dispatch": {"mode": "manual"},
         "local_records": {"canonical_root": "/srv/example/meeting-notes"},
@@ -105,6 +110,38 @@ class OnboardingConfigTests(unittest.TestCase):
         config["organization"]["name"] = "sk-" + "exampleexampleexampleexample123"
         errors = MODULE.validate(config)
         self.assertTrue(any("credential" in error for error in errors))
+
+    def test_string_rag_enabled_fails(self):
+        config = valid_config()
+        config["rag"]["enabled"] = "true"
+        errors = MODULE.validate(config)
+        self.assertTrue(any("rag.enabled" in error for error in errors))
+
+    def test_empty_notion_target_fails(self):
+        config = valid_config()
+        config["notion"]["task_master_database_id"] = ""
+        errors = MODULE.validate(config)
+        self.assertTrue(any("task_master_database_id" in error for error in errors))
+
+    def test_empty_marker_and_phrase_fail(self):
+        config = valid_config()
+        config["notion"]["ai_section_marker"] = ""
+        config["discord"]["confirmation_phrase"] = ""
+        errors = MODULE.validate(config)
+        self.assertTrue(any("ai_section_marker" in error for error in errors))
+        self.assertTrue(any("confirmation_phrase" in error for error in errors))
+
+    def test_relative_local_path_fails(self):
+        config = valid_config()
+        config["local_records"]["canonical_root"] = "records/meetings"
+        errors = MODULE.validate(config)
+        self.assertTrue(any("absolute path" in error for error in errors))
+
+    def test_empty_isolated_route_fails(self):
+        config = valid_config()
+        config["rag"]["access_mode"] = "isolated-route:"
+        errors = MODULE.validate(config)
+        self.assertTrue(any("access_mode" in error for error in errors))
 
 
 if __name__ == "__main__":

@@ -9,6 +9,8 @@ homepage: "https://github.com/JasperYang0609/openclaw-ai-meeting-secretary"
 
 Turn meeting recordings into traceable records and confirmed action items. Use the smallest configured workflow and fail closed when setup, identity, source integrity, or approval is incomplete.
 
+This package provides agent instructions, templates, and local validators. It does not bundle speech-to-text, Notion or Discord connectors, task dispatch, or RAG execution. Use configured provider tools for live readback and writes; never treat a locally editable file as authorization by itself.
+
 ## Start with onboarding
 
 Read [onboarding-config.example.json](assets/onboarding-config.example.json) and [notion-contract.md](references/notion-contract.md). Do not enter the live meeting flow until the organization has supplied and verified:
@@ -17,7 +19,8 @@ Read [onboarding-config.example.json](assets/onboarding-config.example.json) and
 - Notion transcript, meeting-record, task-master, and department database targets;
 - a meeting template with a clear human/AI boundary;
 - a Discord notification channel;
-- a manual or scheduled downstream task-dispatch mode;
+- a manual or disabled downstream task-dispatch mode;
+- authorized Discord and Notion confirmer IDs plus confirmation freshness;
 - optional RAG approval, canonical directory, source identity, and access design.
 
 Validate the private onboarding file:
@@ -44,21 +47,25 @@ If the user supplies the template itself, stop and ask for a copied meeting page
 
 Use the configured speech-to-text tool. Preserve meeting order and do not invent missing audio.
 
-Before mirroring to Notion, save a complete cleaned Markdown transcript under a customer-separated path:
+Before mirroring to Notion, save a cleaned Markdown transcript under a customer-separated path:
 
 ```text
 records/meeting-notes/<counterparty>/<project>/YYYY-MM-DD-<meeting>/transcript-clean.md
 ```
 
-For internal meetings, use `internal/<project>/...`; use `general` when no stable project exists. Long transcripts may be split into ordered parts only when the directory contains an index and the combined content is complete.
+For internal meetings, use `internal/<project>/...`; use `general` when no stable project exists. This version's completion validator supports one `transcript-clean.md` file. Combine split parts and verify their order before running the completion gate.
 
 Validate the saved transcript:
 
 ```bash
-python3 <skill-root>/scripts/validate_local_transcript.py /path/to/transcript-clean.md
+python3 <skill-root>/scripts/validate_local_transcript.py \
+  /path/to/transcript-clean.md \
+  --completion-gate \
+  --expected-first-marker "<recording-start-marker>" \
+  --expected-last-marker "<recording-end-marker>"
 ```
 
-If the file is missing, empty, unreadable, truncated, or inconsistent with the recording range, stop with `BLOCKED_LOCAL_TRANSCRIPT`. Cloud copies never replace this local completion gate.
+The validator proves file readability and that the supplied first/last markers exist in the correct order. It cannot prove semantic completeness. A human must compare the transcript with the recording or an independent source artifact and record that review before marking transcription complete. If any check is missing, stop with `BLOCKED_LOCAL_TRANSCRIPT`. Cloud copies never replace this gate.
 
 ### 3. Respect the Notion boundary
 
@@ -91,14 +98,15 @@ Do not dispatch tasks yet.
 
 ### 5. Require two-stage human confirmation
 
-Notify the configured Discord channel with the meeting page and task count. Ask a human to verify the meeting record and task details in Notion.
+Notify the configured Discord channel with the meeting ID, a unique request ID, the meeting page, task count, and confirmation deadline. Ask an authorized human to verify the meeting record and task details in Notion, then reply directly to that request.
 
 Proceed only when:
 
-1. Discord receives the configured confirmation phrase; and
-2. Notion shows both the meeting record and task rows as confirmed with a named confirmer.
+1. fresh Discord API readback shows the exact phrase from an authorized numeric user ID, in the configured channel, replying to the exact request message before expiry; and
+2. fresh Notion API readback shows the meeting record and every task intended for dispatch as confirmed by authorized Notion user IDs; and
+3. the provider readbacks are written to one meeting-bound receipt and pass `validate_confirmation_receipt.py` with the expected meeting and request IDs.
 
-If either check is missing, stop and remind the user. Unconfirmed records must not be dispatched or indexed.
+The receipt validator checks consistency and freshness but does not authenticate provider data. Build the receipt only from live readback in the same run. If any check is missing, stop and remind the user. Unconfirmed records must not be dispatched or indexed.
 
 ### 6. Publish confirmed knowledge when approved
 
@@ -106,25 +114,25 @@ When RAG is enabled and approved:
 
 1. Create or update the stable `summary.md` for the meeting.
 2. Include a cleaned transcript only when the customer explicitly approved that source scope.
-3. Validate the Markdown with `validate_meeting_record.py`.
+3. Validate the Markdown with `validate_meeting_record.py`, requiring the expected customer, index project, and confirmation receipt.
 4. Run the existing Gemini RAG incremental index.
 5. Read back provider, model, source, and changed-file evidence.
 6. Run the coverage audit and one source-grounded natural-language recall test.
 
 Only then mark the meeting `RAG_READY`. Otherwise preserve the confirmed record and use `RAG_PENDING` or `RAG_ERROR` without changing providers.
 
-### 7. Dispatch confirmed tasks
+### 7. Hand off confirmed tasks
 
-Sync only confirmed tasks to the configured task-master database. Preserve meeting, topic, and transcript evidence. Trigger the downstream department workflow once; do not overwrite later department status or redispatch an already-sent task.
+This public package does not execute task dispatch. After fresh provider readback and receipt validation, mark the meeting `READY_FOR_MANUAL_DISPATCH`. An authorized human or separately reviewed downstream integration may copy only confirmed tasks to the task-master database while preserving meeting, topic, and transcript evidence. Record a dispatch receipt and never overwrite later department status or redispatch an already-sent task.
 
 ## Never do these
 
 - Write into the master template or human-authored section.
-- Claim transcription is complete without a verified local Markdown transcript.
+- Claim transcription is complete without ordered first/last evidence and human completeness review.
 - Infer a speaker, owner, department, deadline, or approval that was not confirmed.
 - Dispatch or index unconfirmed content.
 - Store different customers in the same unprotected directory or retrieval route.
 - Treat a project label, prompt, or Markdown field as authorization.
+- Treat an editable local receipt as a substitute for fresh provider readback.
 - Commit recordings, transcripts, completed onboarding files, IDs, secrets, or customer data.
 - Use Qwen or any other fallback embedding provider.
-

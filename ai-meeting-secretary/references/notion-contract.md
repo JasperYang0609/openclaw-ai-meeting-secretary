@@ -43,9 +43,16 @@ If the marker is missing or duplicated, stop instead of guessing the writable ra
 
 ## Confirmation rule
 
-Discord receives the confirmation phrase, then the Agent reads Notion and verifies that the meeting record and every task intended for dispatch are confirmed by a named human. Discord alone is insufficient. Notion alone does not trigger the next phase.
+The Agent sends a meeting-bound request containing a unique request ID and expiry. It then performs fresh provider readback and verifies:
+
+- the Discord reply comes from an authorized numeric user ID;
+- the reply is in the configured channel and directly references the request message;
+- the exact phrase arrives before the configured maximum age;
+- the Notion meeting record and every task intended for dispatch are confirmed by authorized Notion user IDs;
+- every task still has `Dispatched = false`.
+
+The Agent writes those readbacks into the confirmation receipt and runs `validate_confirmation_receipt.py` with the expected meeting and request IDs. Discord alone is insufficient. Notion alone does not trigger the next phase. A locally edited receipt is not authorization and must not replace provider readback.
 
 ## Hub pages
 
 When a user supplies a customer hub or project hub instead of a copied meeting page, create a child page named `YYYY-MM-DD | Counterparty | Topic`. Store the full meeting record and transcript in the child page. Keep only the child-page link in the hub.
-

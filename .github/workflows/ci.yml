@@ -16,6 +16,7 @@ jobs:
       - name: Compile Python
         run: >-
           python3 -m py_compile
+          ai-meeting-secretary/scripts/validate_confirmation_receipt.py
           ai-meeting-secretary/scripts/validate_local_transcript.py
           ai-meeting-secretary/scripts/validate_meeting_record.py
           ai-meeting-secretary/scripts/validate_onboarding_config.py
@@ -27,4 +28,3 @@ jobs:
         run: python3 scripts/check_public_release.py
       - name: Verify deterministic package
         run: python3 scripts/build_skill_archive.py --check
-

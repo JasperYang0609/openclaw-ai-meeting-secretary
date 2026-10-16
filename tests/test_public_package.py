@@ -59,7 +59,30 @@ class PublicPackageTests(unittest.TestCase):
         self.assertTrue(all(name.startswith("ai-meeting-secretary/") for name in names))
         self.assertNotIn("ai-meeting-secretary/assets/onboarding.json", names)
 
+    def test_archive_excludes_unlisted_customer_files(self):
+        unexpected = SKILL / "assets" / "customer-recording.mp3"
+        unexpected.write_bytes(b"synthetic audio placeholder")
+        self.addCleanup(lambda: unexpected.unlink(missing_ok=True))
+        output = ROOT / "dist" / "allowlist-test.skill"
+        subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "scripts" / "build_skill_archive.py"),
+                "--output",
+                str(output),
+            ],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        self.addCleanup(lambda: output.unlink(missing_ok=True))
+        with zipfile.ZipFile(output) as archive:
+            self.assertNotIn(
+                "ai-meeting-secretary/assets/customer-recording.mp3",
+                archive.namelist(),
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
-
